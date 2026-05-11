@@ -1,0 +1,5 @@
+# Python dependencies for the middleware project.
+fastapi==0.115.0
+uvicorn==0.30.6
+faker==26.1.0
+requests==2.32.3
