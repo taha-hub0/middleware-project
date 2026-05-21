@@ -20,6 +20,13 @@ def kvkk_mask_step(record: dict, context: dict) -> dict:
         masked["phone"] = _mask_phone(masked["phone"])
     if "ip" in masked:
         masked["ip"] = _mask_ip(masked["ip"])
+    # Additional sensitive identifiers
+    for key in ["tc", "tckn", "tckimlik", "identity_number"]:
+        if key in masked:
+            masked[key] = _mask_numeric_id(masked[key])
+    for key in ["credit_card", "card_number", "card"]:
+        if key in masked:
+            masked[key] = _mask_credit_card(masked[key])
     return masked
 
 
@@ -69,6 +76,23 @@ def _mask_phone(value: object) -> str:
     if len(digits) <= 2:
         return "*" * max(len(digits), 1)
     return "*" * (len(digits) - 2) + digits[-2:]
+
+
+def _mask_numeric_id(value: object) -> str:
+    digits = "".join(ch for ch in str(value) if ch.isdigit())
+    if not digits:
+        return _mask_text(value)
+    if len(digits) <= 4:
+        return "*" * (len(digits) - 2) + digits[-2:]
+    return "*" * (len(digits) - 4) + digits[-4:]
+
+
+def _mask_credit_card(value: object) -> str:
+    digits = "".join(ch for ch in str(value) if ch.isdigit())
+    if len(digits) <= 4:
+        return "*" * max(len(digits), 1)
+    # show only last 4 digits
+    return "*" * (len(digits) - 4) + digits[-4:]
 
 
 def _mask_ip(value: object) -> str:

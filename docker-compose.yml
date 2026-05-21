@@ -8,3 +8,14 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+  producer:
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    container_name: producer_service
+    environment:
+      - MIDDLEWARE_URL=http://middleware:8000/logs
+      - PRODUCER_COUNT=100
+      - PRODUCER_DELAY=0.1
+    depends_on:
+      - middleware

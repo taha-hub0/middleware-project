@@ -53,7 +53,8 @@ def receive_log(payload: dict) -> dict:
         return {"status": "dropped", "reason": context.get("dropped_by")}
 
     channel = context.get("channel", "general")
-    formats = ["json", "csv", "html"]
+    # deliver in requested order for roles: system admin, cybersec, webdev
+    formats = ["html", "csv", "json"]
     formatted_by_format = {}
     for format_name in formats:
         formatter = formatter_factory.create(format_name)

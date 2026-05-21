@@ -1,36 +1,52 @@
-# Middleware Tabanlı Veri İşleme Sistemi
+# Middleware Data Processing Platform
 
-Bu proje, sahte log/veri üretip FastAPI tabanlı middleware üzerinden işleyen, KVKK maskelemesi yapan ve çıktıları dosyaya yazan sade bir veri işleme sistemidir.
+This project demonstrates a two-container log processing pipeline for a brokerage-style environment.
+One container generates synthetic operational logs, and the other container acts as a middleware service that
+anonymizes sensitive fields, enriches each record, and writes the result in multiple output formats.
 
-## 1. Proje Amacı
-Üretilecek log/veri kayıtlarını tek bir middleware servisinde filtrelemek, maskelemek, zenginleştirmek ve istenen formatta çıktı üretmek.
+## Overview
 
-## 2. Sistem Mimarisi
+The middleware receives log events through a FastAPI endpoint and processes them through a small pipeline.
+Processed records are written to `outputs/` as HTML, CSV, and JSON files.
+Application events are also written to `logs/` through an observer-based logging layer.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    P[Producer container] -->|POST /logs| M[Middleware API]
+    M --> C[Chain of Responsibility]
+    C --> A[Anonymization]
+    C --> E[Enrichment]
+    C --> R[Routing]
+    M --> F[Formatter Factory]
+    F --> O[outputs/]
+    M --> L[Observer-based logging]
+    L --> G[logs/]
 ```
-Producer
-  └─> POST /logs (FastAPI)
-        └─> Chain of Responsibility (filter → kvkk → enrichment → routing)
-              └─> Formatter (JSON/CSV/HTML)
-                    └─> outputs/
-        └─> Observer (logging) → logs/
-```
 
-## 3. Kullanılan Teknolojiler
-- Python
-- FastAPI
-- Faker
-- requests
-- Docker
+## Features
 
-## 4. Kullanılan Tasarım Kalıpları
-- **Chain of Responsibility**: İşleme adımlarını sırayla çalıştırır.
-- **Factory Pattern**: JSON/CSV/HTML formatter seçiminde kullanılır.
-- **Observer Pattern**: Normal ve kritik logları merkezi logging yapısına yönlendirir.
+- Synthetic log generation with realistic fields and multiple scenarios.
+- Sensitive-data masking for email, phone, IP address, TCKN-style identifiers, and card numbers.
+- Record enrichment with metadata such as category and processing timestamp.
+- Role-friendly output formatting in HTML, CSV, and JSON.
+- Stress testing support for throughput measurement.
 
-## 5. Klasör Yapısı
-```
-project/
+## Design Patterns
+
+- Chain of Responsibility for step-by-step record processing.
+- Factory Pattern for formatter selection.
+- Observer Pattern for middleware event logging.
+
+## Project Structure
+
+```text
+middleware_project/
+├── docker-compose.yml
+├── Dockerfile
 ├── producer/
+│   ├── Dockerfile
 │   └── main.py
 ├── middleware/
 │   ├── main.py
@@ -38,87 +54,61 @@ project/
 │   ├── steps.py
 │   ├── formatters.py
 │   ├── observers.py
-│   └── logger.py
-├── logs/
-├── outputs/
+│   ├── logger.py
+│   └── storage.py
 ├── stress_test.py
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+├── requirements.txt
+├── logs/
+└── outputs/
 ```
 
-## 6. Kurulum Adımları
+## Local Run
+
+Install dependencies:
+
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Middleware servisini çalıştırma:
+Run the middleware service:
+
 ```bash
 python -m uvicorn middleware.main:app --host 0.0.0.0 --port 8000
 ```
 
-Producer çalıştırma:
+Run the producer locally:
+
 ```bash
 python producer/main.py
 ```
 
-> `logs/` ve `outputs/` klasörleri otomatik oluşturulur.
+Run the stress test:
 
-## 7. Docker ile Çalıştırma
-```bash
-docker compose up --build
-```
-
-Producer’u ayrı bir terminalde çalıştırabilirsiniz:
-```bash
-python producer/main.py
-```
-
-## 8. Stress Test Sonuçları
-Stress testi çalıştırma:
 ```bash
 python stress_test.py
 ```
 
-Örnek çıktı formatı (gerçek değerler ortama göre değişir):
-```
-Requests: 100 | Duration: <...>s | Req/s: <...> | OK: <...> | Errors: <...>
-Requests: 1000 | Duration: <...>s | Req/s: <...> | OK: <...> | Errors: <...>
-Requests: 5000 | Duration: <...>s | Req/s: <...> | OK: <...> | Errors: <...>
+## Docker Run
+
+Start both containers:
+
+```bash
+docker compose up --build -d
 ```
 
-## 9. Örnek Veri Akışı
-**Gelen veri:**
-```json
-{
-  "timestamp": "2026-05-08T21:11:33Z",
-  "level": "INFO",
-  "event_type": "login",
-  "message": "User logged in",
-  "user_name": "Ahmet Yilmaz",
-  "email": "ahmet@example.com",
-  "phone": "555-123-4567",
-  "ip": "10.1.2.3",
-  "departman": "DEV"
-}
+The producer container sends log batches to the middleware service and exits after completion.
+
+## Output Format
+
+Each accepted record is written in the following order:
+
+```text
+HTML
+CSV
+JSON
 ```
 
-**İşlenmiş çıktı (JSON):**
-```json
-{
-  "timestamp": "2026-05-08T21:11:33Z",
-  "level": "INFO",
-  "event_type": "login",
-  "message": "User logged in",
-  "user_name": "A*****",
-  "email": "a*****@example.com",
-  "phone": "********67",
-  "ip": "10.1.***.***",
-  "departman": "DEV",
-  "category": "general",
-  "processed_at": "2026-05-08T21:11:33+00:00"
-}
-```
+## Notes
 
-## 10. Sonuç ve Kazanımlar
-Bu proje; sade bir mimariyle veri işleme hattı kurmayı, tasarım kalıplarını doğru yerde kullanmayı ve FastAPI tabanlı bir middleware servisinin uçtan uca çalışmasını göstermektedir.
+- `logs/` and `outputs/` are created automatically when needed.
+- The repository includes a simple performance script for batch request measurement.
