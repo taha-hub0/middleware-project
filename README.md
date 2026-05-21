@@ -1,45 +1,41 @@
-# Middleware Data Processing Platform
+# Middleware Veri İşleme Platformu
 
-This project demonstrates a two-container log processing pipeline for a brokerage-style environment.
-One container generates synthetic operational logs, and the other container acts as a middleware service that
-anonymizes sensitive fields, enriches each record, and writes the result in multiple output formats.
+Bu proje, iki konteynerden oluşan bir log işleme altyapısını gösterir. Bir konteyner sahte operasyon kayıtları üretir, diğer konteyner ise bu kayıtları karşılayıp KVKK uyumlu şekilde anonimleştirir, zenginleştirir ve çoklu formatlarda çıktı üretir.
 
-## Overview
+## Proje Amacı
 
-The middleware receives log events through a FastAPI endpoint and processes them through a small pipeline.
-Processed records are written to `outputs/` as HTML, CSV, and JSON files.
-Application events are also written to `logs/` through an observer-based logging layer.
+Sistem, üretici servis tarafından gönderilen kayıtları middleware katmanında işler. İşlenen kayıtlar `outputs/` klasörüne HTML, CSV ve JSON olarak yazılır. Uygulama olayları ayrıca observer tabanlı bir logging yapısı ile `logs/` içine alınır.
 
-## Architecture
+## Mimari Akış
 
 ```mermaid
 flowchart LR
-    P[Producer container] -->|POST /logs| M[Middleware API]
+    P[Producer Container] -->|POST /logs| M[Middleware API]
     M --> C[Chain of Responsibility]
-    C --> A[Anonymization]
-    C --> E[Enrichment]
-    C --> R[Routing]
+    C --> A[KVKK Anonimleştirme]
+    C --> E[Zenginleştirme]
+    C --> R[Yönlendirme]
     M --> F[Formatter Factory]
     F --> O[outputs/]
-    M --> L[Observer-based logging]
+    M --> L[Observer Tabanlı Logging]
     L --> G[logs/]
 ```
 
-## Features
+## Özellikler
 
-- Synthetic log generation with realistic fields and multiple scenarios.
-- Sensitive-data masking for email, phone, IP address, TCKN-style identifiers, and card numbers.
-- Record enrichment with metadata such as category and processing timestamp.
-- Role-friendly output formatting in HTML, CSV, and JSON.
-- Stress testing support for throughput measurement.
+- Gerçekçi alanlar içeren sahte log üretimi.
+- E-posta, telefon, IP, TC/TCKN ve kart numarası gibi hassas verilerin maskelenmesi.
+- Kayıtların kategori ve işlenme zamanı ile zenginleştirilmesi.
+- HTML, CSV ve JSON formatlarında çıktı üretimi.
+- Performans doğrulaması için stres testi desteği.
 
-## Design Patterns
+## Kullanılan Tasarım Desenleri
 
-- Chain of Responsibility for step-by-step record processing.
-- Factory Pattern for formatter selection.
-- Observer Pattern for middleware event logging.
+- Chain of Responsibility: Kayıtları adım adım işlemek için.
+- Factory Pattern: Formatlayıcı seçimini merkezi olarak yönetmek için.
+- Observer Pattern: Middleware olaylarını kaydetmek ve kritik olayları izlemek için.
 
-## Project Structure
+## Proje Yapısı
 
 ```text
 middleware_project/
@@ -62,45 +58,45 @@ middleware_project/
 └── outputs/
 ```
 
-## Local Run
+## Yerel Çalıştırma
 
-Install dependencies:
+Bağımlılıkları kurun:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Run the middleware service:
+Middleware servisini başlatın:
 
 ```bash
 python -m uvicorn middleware.main:app --host 0.0.0.0 --port 8000
 ```
 
-Run the producer locally:
+Producer servisini yerelde çalıştırın:
 
 ```bash
 python producer/main.py
 ```
 
-Run the stress test:
+Stres testini çalıştırın:
 
 ```bash
 python stress_test.py
 ```
 
-## Docker Run
+## Docker ile Çalıştırma
 
-Start both containers:
+İki servisi birlikte başlatın:
 
 ```bash
 docker compose up --build -d
 ```
 
-The producer container sends log batches to the middleware service and exits after completion.
+Producer konteyneri belirlenen sayıda kayıt gönderir ve işlem tamamlandığında kapanır.
 
-## Output Format
+## Çıktı Sırası
 
-Each accepted record is written in the following order:
+Kabul edilen her kayıt şu sırayla dosyalanır:
 
 ```text
 HTML
@@ -108,7 +104,7 @@ CSV
 JSON
 ```
 
-## Notes
+## Notlar
 
-- `logs/` and `outputs/` are created automatically when needed.
-- The repository includes a simple performance script for batch request measurement.
+- `logs/` ve `outputs/` klasörleri ihtiyaç halinde otomatik oluşturulur.
+- Projede toplu istek performansını ölçmek için basit bir stres testi betiği bulunur.
