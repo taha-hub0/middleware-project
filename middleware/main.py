@@ -28,6 +28,17 @@ formatter_factory = FormatterFactory()
 storage = OutputStorage(outputs_dir="outputs")
 
 
+def _formats_for_role(role: str | None) -> list[str]:
+    normalized_role = str(role or "").strip().lower().replace(" ", "_")
+    if normalized_role in {"system_admin", "admin", "system-admin"}:
+        return ["html", "csv", "json"]
+    if normalized_role in {"cybersec", "cyber_security", "security"}:
+        return ["json", "html", "csv"]
+    if normalized_role in {"web_dev", "webdev", "developer"}:
+        return ["csv", "html", "json"]
+    return ["html", "csv", "json"]
+
+
 @app.post("/logs")
 def receive_log(payload: dict) -> dict:
     context: dict = {}
@@ -53,8 +64,8 @@ def receive_log(payload: dict) -> dict:
         return {"status": "dropped", "reason": context.get("dropped_by")}
 
     channel = context.get("channel", "general")
-    # deliver in requested order for roles: system admin, cybersec, webdev
-    formats = ["html", "csv", "json"]
+    role = payload.get("role") or payload.get("user_role") or payload.get("recipient_role")
+    formats = _formats_for_role(role)
     formatted_by_format = {}
     for format_name in formats:
         formatter = formatter_factory.create(format_name)
@@ -83,4 +94,7 @@ def receive_log(payload: dict) -> dict:
             "context": context,
         }
     )
-    return {"status": "ok", "channel": channel, "formats": formats}
+    response = {"status": "ok", "channel": channel, "formats": formats}
+    if role is not None:
+        response["role"] = role
+    return response

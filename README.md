@@ -26,7 +26,8 @@ flowchart LR
 - Gerçekçi alanlar içeren sahte log üretimi.
 - E-posta, telefon, IP, TC/TCKN ve kart numarası gibi hassas verilerin maskelenmesi.
 - Kayıtların kategori ve işlenme zamanı ile zenginleştirilmesi.
-- HTML, CSV ve JSON formatlarında çıktı üretimi.
+- System admin, cybersec ve web dev rolleri için farklı çıktı sıralarıyla HTML, CSV ve JSON üretimi.
+- Producer, tüm senaryoları sistematik olarak kapsamak için tanımlı senaryo kataloğunu döngüsel biçimde üretir.
 - Performans doğrulaması için stres testi desteği.
 
 ## Kullanılan Tasarım Desenleri

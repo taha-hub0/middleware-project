@@ -3,6 +3,7 @@ import random
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable
 
 import requests
@@ -13,6 +14,7 @@ ENDPOINT = "http://127.0.0.1:8000/logs"
 DEFAULT_COUNTS = [100, 1000, 5000]
 LEVELS = ["info", "warning", "critical"]
 DEPARTMENTS = ["DEV", "SYS", "GUV", "YON"]
+DEFAULT_WORKERS = 32
 
 
 @dataclass
@@ -41,12 +43,22 @@ def build_payload(seq_id: int, faker: Faker, rng: random.Random) -> dict:
     }
 
 
+def post_payload(endpoint: str, payload: dict, timeout: int = 10) -> bool:
+    try:
+        response = requests.post(endpoint, json=payload, timeout=timeout)
+        return response.ok
+    except requests.RequestException:
+        return False
+
+
 def run_single_test(
-    request_count: int, endpoint: str = ENDPOINT, verbose: bool = False
+    request_count: int,
+    endpoint: str = ENDPOINT,
+    verbose: bool = False,
+    max_workers: int = DEFAULT_WORKERS,
 ) -> TestResult:
     faker = Faker()
     rng = random.Random()
-    session = requests.Session()
 
     start_time = datetime.now()
     start_perf = time.perf_counter()
@@ -54,20 +66,27 @@ def run_single_test(
     success_count = 0
     error_count = 0
 
-    for index in range(1, request_count + 1):
-        payload = build_payload(index, faker, rng)
-        try:
-            response = session.post(endpoint, json=payload, timeout=10)
-            if response.ok:
-                success_count += 1
-            else:
+    worker_count = max(1, min(max_workers, request_count))
+    payloads = [build_payload(index, faker, rng) for index in range(1, request_count + 1)]
+
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {
+            executor.submit(post_payload, endpoint, payload): index
+            for index, payload in enumerate(payloads, start=1)
+        }
+        for future in as_completed(futures):
+            index = futures[future]
+            try:
+                if future.result():
+                    success_count += 1
+                else:
+                    error_count += 1
+                    if verbose:
+                        print(f"[WARN] {index} -> request failed")
+            except Exception as exc:  # pragma: no cover - defensive guard for worker failures
                 error_count += 1
                 if verbose:
-                    print(f"[WARN] {index} -> HTTP {response.status_code}")
-        except requests.RequestException as exc:
-            error_count += 1
-            if verbose:
-                print(f"[ERROR] {index} -> {exc}")
+                    print(f"[ERROR] {index} -> {exc}")
 
     end_perf = time.perf_counter()
     end_time = datetime.now()
@@ -88,8 +107,15 @@ def run_single_test(
     )
 
 
-def run_tests(counts: Iterable[int] = DEFAULT_COUNTS, endpoint: str = ENDPOINT) -> None:
-    results = [run_single_test(count, endpoint=endpoint) for count in counts]
+def run_tests(
+    counts: Iterable[int] = DEFAULT_COUNTS,
+    endpoint: str = ENDPOINT,
+    max_workers: int = DEFAULT_WORKERS,
+) -> None:
+    results = [
+        run_single_test(count, endpoint=endpoint, max_workers=max_workers)
+        for count in counts
+    ]
     print("\nStress Test Results")
     print("-" * 70)
     for result in results:
