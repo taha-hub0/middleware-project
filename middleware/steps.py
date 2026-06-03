@@ -1,10 +1,10 @@
-# Processing steps for the middleware pipeline.
+
 from datetime import datetime, timezone
 
 
 def log_filter_step(record: dict, context: dict) -> dict | None:
     level = str(record.get("level", "INFO")).upper()
-    if level == "DEBUG":
+    if level in{ "DEBUG", "INFO","WARNING"}:
         return None
     return record
 
