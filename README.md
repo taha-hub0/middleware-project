@@ -116,19 +116,34 @@ docker compose up --build -d
 
 Producer konteyneri belirlenen sayıda kayıt gönderir ve işlem tamamlandığında kapanır.
 
-## Çıktı Sırası
+## Çıktı Yerleşimi
 
-Kabul edilen her kayıt şu sırayla dosyalanır:
+Kabul edilen her kayıt üç formatta da yazılır. Dosyalar, `routing_step` tarafından
+belirlenen kanala ve güne göre ayrılır:
 
 ```text
-HTML
-CSV
-JSON
+outputs/
+├── critical/          # security kategorisindeki kayıtlar
+│   └── 2026-08-21/
+│       ├── data_<id>.html
+│       ├── data_<id>.csv
+│       └── data_<id>.json
+└── general/           # finance ve general kategorileri
+    └── 2026-08-21/
 ```
+
+Formatların yazılma sırası role göre değişir:
+
+| Rol | Sıra |
+| --- | --- |
+| `system_admin` | HTML, CSV, JSON |
+| `cybersec` | JSON, HTML, CSV |
+| `web_dev` | CSV, HTML, JSON |
 
 ## Notlar
 
 - `logs/` ve `outputs/` klasörleri ihtiyaç halinde otomatik oluşturulur.
+- Kanal/gün klasörlemesi çıktıyı dağıtır, ancak tek klasörü tamamen sınırlamaz: aynı gün 5000 istekli stres testi çalıştırılırsa `outputs/critical/<gün>/` altında on binden fazla dosya oluşabilir. Ölçüm sonrası bu klasörü temizlemek iyi olur.
 - Filtrede düşürülen kayıtlar için servis `{"status": "dropped"}` döner; bu kayıtlar `outputs/` altına yazılmaz.
 - Projede toplu istek performansını ölçmek için basit bir stres testi betiği bulunur.
 - İşleme sırasında beklenmedik bir hata olursa kayıt sessizce kaybolmaz: olay `CRITICAL` seviyesinde loglanır ve servis `{"status": "error"}` ile HTTP 500 döner. Hata ayrıntısı yanıta konmaz, çünkü kaydın maskelenmemiş verisini taşıyabilir.

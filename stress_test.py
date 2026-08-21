@@ -169,7 +169,10 @@ def run_tests(
         )
         print("-" * 70)
     total_files = sum(result.processed_count for result in results) * 3
-    print(f"Note: each processed record writes 3 files -> ~{total_files} files in outputs/")
+    print(
+        f"Note: each processed record writes 3 files -> ~{total_files} files under "
+        "outputs/<channel>/<date>/"
+    )
 
 
 def main() -> None:

@@ -93,19 +93,10 @@ def _process(payload: dict, context: dict) -> dict:
         formatter = formatter_factory.create(format_name)
         formatted_by_format[format_name] = formatter.format(processed)
 
-    last_error: FileExistsError | None = None
-    request_id = ""
-    for _ in range(3):
-        request_id = str(uuid.uuid4())
-        try:
-            storage.write_all(formatted_by_format, request_id=request_id)
-            last_error = None
-            break
-        except FileExistsError as exc:
-            last_error = exc
-
-    if last_error is not None:
-        raise last_error
+    # uuid4 çakışması pratikte imkânsız; olası bir FileExistsError yukarıdaki
+    # hata yakalayıcıya düşer ve kritik olay olarak loglanır.
+    request_id = str(uuid.uuid4())
+    storage.write_all(formatted_by_format, request_id=request_id, channel=channel)
 
     dispatcher.notify(
         {
