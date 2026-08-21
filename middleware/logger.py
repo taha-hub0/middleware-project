@@ -1,4 +1,6 @@
 # Central logging configuration for the middleware.
+# Bu dosya: log dosyalarının yolunu ve FileHandler yapılandırmasını sağlar.
+# Diğer modüller (`middleware.observers`) kayıtları buradaki logger aracılığıyla yazar.
 import logging
 import os
 from typing import Optional

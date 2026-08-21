@@ -1,4 +1,4 @@
-# Output storage helper that writes files to disk.
+
 import os
 import threading
 from typing import Mapping

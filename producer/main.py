@@ -1,4 +1,3 @@
-# Producer service: generate fake logs and POST to middleware.
 import os
 import random
 import time
@@ -6,6 +5,10 @@ import time
 import requests
 from faker import Faker
 
+
+# Middleware konteyneri ayağa kalkana kadar beklemek için bağlantı hatalarında
+# yeniden deneme sayısı (saniyede bir).
+MAX_ATTEMPTS = 30
 
 SCENARIO_CATALOG = [
     {
@@ -86,14 +89,20 @@ def iter_scenarios(count: int) -> list[dict]:
 
 def send_record(record: dict, endpoint: str) -> None:
     last_error: Exception | None = None
-    for attempt in range(1, 31):
+    for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             response = requests.post(endpoint, json=record, timeout=10)
             response.raise_for_status()
             return
+        except requests.HTTPError as exc:
+            # Sunucu isteği aldı ama işleyemedi. Aynı kaydı tekrar göndermek sonucu
+            # değiştirmez; hata middleware tarafında zaten loglandı. Sıradaki kayda geçilir.
+            print(f"[WARN] kayit islenemedi, atlaniyor: {exc}")
+            return
         except requests.RequestException as exc:
+            # Bağlantı/timeout hatası: middleware konteyneri henüz ayakta olmayabilir.
             last_error = exc
-            if attempt == 30:
+            if attempt == MAX_ATTEMPTS:
                 break
             time.sleep(1)
     if last_error is not None:

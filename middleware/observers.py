@@ -1,4 +1,4 @@
-# Observer Pattern: log olaylarını dinleyip farklı hedeflere yazmak için kullanılır.
+# Observer Pattern
 import logging
 from typing import Iterable
 

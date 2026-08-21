@@ -24,7 +24,8 @@ flowchart LR
 ## Özellikler
 
 - Gerçekçi alanlar içeren sahte log üretimi.
-- E-posta, telefon, IP, TC/TCKN ve kart numarası gibi hassas verilerin maskelenmesi.
+- Seviye tabanlı log filtreleme: varsayılan eşik `WARNING`, yani `DEBUG` ve `INFO` kayıtları gürültü sayılıp düşürülür. Eşik `LOG_LEVEL_THRESHOLD` ortam değişkeni ile değiştirilebilir.
+- E-posta, telefon, IP, TC/TCKN ve kart numarası gibi hassas verilerin maskelenmesi. Maskeleme iki aşamalıdır: önce bilinen alan adları (Türkçe karşılıkları dahil), ardından tüm metin değerleri regex ile taranır; böylece `message` gövdesine gömülmüş PII de maskesiz çıkmaz.
 - Kayıtların kategori ve işlenme zamanı ile zenginleştirilmesi.
 - System admin, cybersec ve web dev rolleri için farklı çıktı sıralarıyla HTML, CSV ve JSON üretimi.
 - Producer, tüm senaryoları sistematik olarak kapsamak için tanımlı senaryo kataloğunu döngüsel biçimde üretir.
@@ -53,8 +54,15 @@ middleware_project/
 │   ├── observers.py
 │   ├── logger.py
 │   └── storage.py
+├── tests/
+│   ├── test_pipeline.py
+│   ├── test_formatters.py
+│   ├── test_observers.py
+│   ├── test_steps.py
+│   └── test_api.py
 ├── stress_test.py
 ├── requirements.txt
+├── requirements-dev.txt
 ├── logs/
 └── outputs/
 ```
@@ -85,6 +93,19 @@ Stres testini çalıştırın:
 python stress_test.py
 ```
 
+## Testler
+
+Test bağımlılıklarını kurun ve testleri çalıştırın:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
+Testler üç tasarım desenini (Chain of Responsibility, Factory, Observer), filtreleme
+eşiğini, KVKK maskelemesini ve `/logs` endpoint'ini kapsar. Testler `logs/` ve `outputs/`
+klasörlerine yazmaz; geçici dizin kullanır.
+
 ## Docker ile Çalıştırma
 
 İki servisi birlikte başlatın:
@@ -108,4 +129,6 @@ JSON
 ## Notlar
 
 - `logs/` ve `outputs/` klasörleri ihtiyaç halinde otomatik oluşturulur.
+- Filtrede düşürülen kayıtlar için servis `{"status": "dropped"}` döner; bu kayıtlar `outputs/` altına yazılmaz.
 - Projede toplu istek performansını ölçmek için basit bir stres testi betiği bulunur.
+- İşleme sırasında beklenmedik bir hata olursa kayıt sessizce kaybolmaz: olay `CRITICAL` seviyesinde loglanır ve servis `{"status": "error"}` ile HTTP 500 döner. Hata ayrıntısı yanıta konmaz, çünkü kaydın maskelenmemiş verisini taşıyabilir.

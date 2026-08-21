@@ -1,5 +1,6 @@
-# Factory Pattern: JSON/CSV/HTML formatter seçim ve üretimini merkezileştirir.
+#formatterfactory pattern
 import csv
+import html
 import io
 import json
 
@@ -21,8 +22,11 @@ class CsvFormatter:
 
 class HtmlFormatter:
     def format(self, record: dict) -> str:
+        # Anahtar ve değerler kaçırılmadan gömülürse, log içeriğindeki `<script>` gibi
+        # işaretleme çıktı dosyasında çalıştırılabilir hale gelir (HTML injection).
         rows = "".join(
-            f"<tr><td>{key}</td><td>{value}</td></tr>" for key, value in record.items()
+            f"<tr><td>{html.escape(str(key))}</td><td>{html.escape(str(value))}</td></tr>"
+            for key, value in record.items()
         )
         return f"<table>{rows}</table>"
 

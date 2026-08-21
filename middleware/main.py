@@ -1,6 +1,5 @@
-# Middleware API: receive logs and run the processing pipeline.
 import uuid
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
 from middleware.formatters import FormatterFactory
 from middleware.observers import CriticalLogObserver, EventDispatcher, NormalLogObserver
@@ -9,6 +8,7 @@ from middleware.steps import (
     enrichment_step,
     kvkk_mask_step,
     log_filter_step,
+    prune_step,
     routing_step,
 )
 from middleware.storage import OutputStorage
@@ -18,8 +18,9 @@ app = FastAPI()
 dispatcher = EventDispatcher([NormalLogObserver(), CriticalLogObserver()])
 pipeline = build_chain(
     [
+        ("prune", prune_step),
         ("log_filter", log_filter_step),
-        ("kvkk_mask", kvkk_mask_step),
+        ("kvkk_mask", kvkk_mask_step), 
         ("enrichment", enrichment_step),
         ("routing", routing_step),
     ]
@@ -40,7 +41,7 @@ def _formats_for_role(role: str | None) -> list[str]:
 
 
 @app.post("/logs")
-def receive_log(payload: dict) -> dict:
+def receive_log(payload: dict, response: Response) -> dict:
     context: dict = {}
     dispatcher.notify(
         {
@@ -50,6 +51,27 @@ def receive_log(payload: dict) -> dict:
             "record": payload,
         }
     )
+    try:
+        return _process(payload, context)
+    except Exception as exc:
+        # Hata yakalanmazsa kayıt sessizce kaybolur ve hiçbir yere iz düşmez.
+        # Bu yüzden önce kritik olay olarak loglanır, sonra istemciye 500 döner.
+        dispatcher.notify(
+            {
+                "type": "error",
+                "level": "CRITICAL",
+                "message": f"Record processing failed: {type(exc).__name__}: {exc}",
+                "record": payload,
+                "context": context,
+            }
+        )
+        response.status_code = 500
+        # Yanıtta yalnızca hata türü paylaşılır. Exception mesajı kaydın kendisinden
+        # maskelenmemiş veri taşıyabileceği için sadece log dosyasına yazılır.
+        return {"status": "error", "error": type(exc).__name__}
+
+
+def _process(payload: dict, context: dict) -> dict:
     processed = pipeline.handle(payload, context)
     if processed is None:
         dispatcher.notify(
@@ -94,7 +116,7 @@ def receive_log(payload: dict) -> dict:
             "context": context,
         }
     )
-    response = {"status": "ok", "channel": channel, "formats": formats}
+    result = {"status": "ok", "channel": channel, "formats": formats}
     if role is not None:
-        response["role"] = role
-    return response
+        result["role"] = role
+    return result

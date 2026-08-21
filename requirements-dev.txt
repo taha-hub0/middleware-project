@@ -1,0 +1,5 @@
+# Test bağımlılıkları. Üretim imajına girmez; sadece yerelde test çalıştırmak için.
+# Kurulum: python -m pip install -r requirements-dev.txt
+-r requirements.txt
+pytest==8.3.3
+httpx==0.27.2
