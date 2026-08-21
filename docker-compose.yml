@@ -2,6 +2,9 @@ services:
   middleware:
     build: .
     container_name: middleware_service
+    environment:
+      # DEBUG/INFO gurultu sayilir; ERROR yapilirsa sadece ERROR/CRITICAL islenir.
+      - LOG_LEVEL_THRESHOLD=WARNING
     ports:
       - "8000:8000"
     volumes:

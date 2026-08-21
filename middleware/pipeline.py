@@ -1,4 +1,4 @@
-# Chain of Responsibility: işleme adımlarını sırayla zincirlemek için kullanılır.
+# Chain of Responsibility pattern
 from typing import Callable, Optional, Tuple
 
 
